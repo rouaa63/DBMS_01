@@ -1,0 +1,4 @@
+timestamp,sensor_id,location,value_celsius
+2026-03-14T06:00:00,T04,bochum,28.9
+2026-03-14T12:00:00,T04,bochum,28.9
+2026-03-14T18:00:00,T04,bochum,28.9

@@ -276,15 +276,15 @@ Answer the following questions in your own words and add your answers directly b
 
 **Question 1.1:** Why is `grep -v "^timestamp"` needed in the shell solution even though the files are already filtered with `grep -h "T02"`? Could this step be omitted? Justify your answer.
 
-> *Your answer:*
+> *Your answer:*   grep -v "^timestamp" removes the header lines from the CSV files. Even though the files are filtered for sensor T02, the header line is not actual data and should not be included. This step ensures that only valid data rows are processed. It could be omitted in this specific case, but it is safer to keep it to avoid incorrect results.
 
 **Question 1.2:** The shell solution uses `sensordata/T02_*.csv` as a file pattern, even though `grep -h "T02"` already filters for `T02`. Why is the file pattern still important — and what would happen if you used `sensordata/*.csv` instead?
 
-> *Your answer:*
+> *Your answer:*      The file pattern sensordata/T02_.csv ensures that only files belonging to sensor T02 are processed. If sensordata/.csv were used instead, all sensor files would be read and then filtered by grep, which is less efficient. The result would still be correct, but it would require unnecessary processing of unrelated data.
 
 **Question 1.3:** The SQL solution uses `ORDER BY timestamp` even though `timestamp` is stored as type `TEXT`. Why does chronological sorting still work correctly? Under what condition would it fail?
 
-> *Your answer:*
+> *Your answer:*       Chronological sorting works because the timestamp is stored in ISO format (YYYY-MM-DDTHH:MM:SS), which ensures that lexicographical sorting is the same as chronological order. It would fail if the timestamp were stored in a different format, such as DD-MM-YYYY, where text sorting does not correspond to the actual time order.
 
 ---
 
@@ -362,15 +362,18 @@ EOF
 
 **Question 2.1:** The shell solution filters by date using `grep -rh "2026-03"`. What problem could arise if a sensor value happened to contain the string `2026-03` — for example as part of an error note? How does the SQL solution handle this problem?
 
-> *Your answer:*
+> *Your answer:*    The shell solution searches for the string "2026-03" in all lines. If a sensor value or text accidentally contained this string, it would be included even if it is not a valid date. The SQL solution avoids this problem because it filters specifically on the timestamp column, ensuring correct results.
 
 **Question 2.2:** The SQL solution uses `timestamp LIKE '2026-03-%'` for the date filter instead of a proper date function. Name one advantage and one disadvantage of this approach.
 
-> *Your answer:*
+> *Your answer:*   An advantage of using LIKE is that it is simple and easy to use for matching patterns. A disadvantage is that it does not use proper date functions, so it may be less efficient and less flexible for more complex date queries.
 
 **Question 2.3:** The SQL solution returns results sorted by `ORDER BY value_celsius DESC`. The shell solution does not include this sorting. Extend the shell solution to also sort by temperature in descending order and write your command here.
 
-> *Your answer (extended shell command):*
+> *Your answer (extended shell command):*    grep -rh "2026-03" sensordata/ \
+    | grep -v "^timestamp" \
+    | awk -F',' '$4 > 25.0 {print $1, $2, $4}' \
+    | sort -k3 -nr
 
 ---
 
@@ -463,15 +466,22 @@ EOF
 
 **Question 3.1:** The `awk` solution initialises `min=9999` and `max=-9999`. What would happen if all temperature values in the dataset were greater than 9999? How could the initialisation be made more robust?
 
-> *Your answer:*
+> *Your answer:*    If all values were greater than 9999, the minimum would be incorrect. A better approach would be to initialise min and max with the first actual value instead of fixed numbers.
 
 **Question 3.2:** The SQL solution uses `GROUP BY sensor_id`. What would the query return *without* this clause — i.e. if you ran `SELECT sensor_id, MIN(value_celsius), MAX(value_celsius), ROUND(AVG(value_celsius), 1) FROM readings`? Try it and describe the result.
 
-> *Your answer:*
+> *Your answer:*    Without GROUP BY, the query would return a single row with the overall minimum, maximum, and average for all sensors combined, instead of separate results per sensor.
 
 **Question 3.3:** Extend the SQL query with an additional column `COUNT(*) AS num_readings` that shows the total number of measurements for each sensor. Write the complete extended query here.
 
-> *Your answer (extended SQL query):*
+> *Your answer (extended SQL query):*       SELECT sensor_id,
+       MIN(value_celsius) AS min_temp,
+       MAX(value_celsius) AS max_temp,
+       ROUND(AVG(value_celsius), 1) AS avg_temp,
+       COUNT(*) AS num_readings
+FROM readings
+GROUP BY sensor_id
+ORDER BY sensor_id;
 
 ---
 
@@ -482,22 +492,22 @@ After completing all three tasks, answer the following questions:
 **Question A — Writing effort:**
 Which approach was easier to write correctly on the first try? Explain which properties of each language contributed to this.
 
-> *Your answer:*
+> *Your answer:*   The SQL approach was easier to write because it is more concise and clearly expresses what is needed.
 
 **Question B — Extensibility:**
 What would you need to change in the shell solution if a fifth sensor `T05` were added? What about the SQL solution? Which approach scales better — and why?
 
-> *Your answer:*
+> *Your answer:*    In the shell solution, a new sensor would require changes to the file pattern or loop. In SQL, no change is needed because the query automatically includes all sensors. SQL scales better.
 
 **Question C — Performance:**
 The shell solution reads files from disk on every invocation. A database can cache frequently queried data in memory. What does this mean for performance with 10 000 sensors and multi-year measurement data?
 
-> *Your answer:*
+> *Your answer:*   With many sensors and large data, the shell solution becomes slow because it reads all files each time. A database can store data efficiently and use caching and indexing, making it much faster.
 
 **Question D — Declarative vs. imperative:**
 SQL is called a *declarative* language: you describe *what* you want, not *how* to compute it. Bash/awk, by contrast, are *imperative*: you write step by step how the result is to be computed. In which of the three tasks did you feel this difference most clearly? Justify your choice.
 
-> *Your answer:*
+> *Your answer:*   The difference was most noticeable in Task 3, where SQL used a single query, while the shell required loops and manual calculations.
 
 > **Screenshot 7:** Take a final screenshot of your terminal showing the SQLite prompt with a query of your own invention on the `readings` table — one you came up with yourself that goes beyond the tasks above — and insert it here.
 >
